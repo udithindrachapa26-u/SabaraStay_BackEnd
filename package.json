@@ -12,6 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@dotenvx/dotenvx": "^1.61.0",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.1",
@@ -20,7 +21,6 @@
     "mysql2": "^3.20.0"
   },
   "devDependencies": {
-    "@dotenvx/dotenvx": "^1.60.2",
     "nodemon": "^3.1.4"
   }
 }
