@@ -70,7 +70,7 @@ export const login = (req, res) => {
       }
 
       const token = jwt.sign(
-        { id: student.id, role: "student" },
+        { id: student.studentID || student.id, role: "student" },
         process.env.JWT_SECRET,
         { expiresIn: "1d" }
       );
@@ -103,7 +103,7 @@ export const login = (req, res) => {
       }
 
       const token = jwt.sign(
-        { id: owner.id, role: "owner" },
+        { id: owner.ownerID || owner.id, role: "owner" },
         process.env.JWT_SECRET,
         { expiresIn: "1d" }
       );
