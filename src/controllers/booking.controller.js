@@ -1,3 +1,5 @@
+import { db } from "../config/db.js";
+
 export const getMyBookings = (req, res) => {
   const studentId = req.user.id;
 
@@ -5,7 +7,7 @@ export const getMyBookings = (req, res) => {
     SELECT b.id, bd.name AS boarding_name, b.status
     FROM bookings b
     JOIN boardings bd ON b.boarding_id = bd.id
-    WHERE b.student_id = ?
+    WHERE b.user_id = ?
   `;
 
   db.query(sql, [studentId], (err, result) => {
