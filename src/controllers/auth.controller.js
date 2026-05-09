@@ -4,18 +4,18 @@ import { db } from "../config/db.js";
 export const register = async (req, res) => {
   const { firstName, lastName, email, password, contactNo, role } = req.body;
 
-  // 1️⃣ Validation
+  // Validation
   if (!firstName || !lastName || !email || !password || !role) {
     return res.status(400).json({ message: "All fields required" });
   }
 
-  // 2️⃣ Password hash
+  // Password hash
   const hashedPassword = await bcrypt.hash(password, 10);
 
   let sql = "";
   let values = [];
 
-  // 3️⃣ Role based insert
+  // Role based insert
   if (role === "student") {
     sql =
       "INSERT INTO students (firstName, lastName, email, password, contactNo) VALUES (?, ?, ?, ?, ?)";
@@ -28,7 +28,7 @@ export const register = async (req, res) => {
     return res.status(400).json({ message: "Invalid role" });
   }
 
-  // 4️⃣ Execute query
+  // Execute query
   db.query(sql, values, (err) => {
     if (err) {
       return res.status(500).json({ message: "Database error" });
@@ -43,16 +43,16 @@ export const register = async (req, res) => {
 
 import jwt from "jsonwebtoken";
 
-// 🔐 LOGIN CONTROLLER
+// LOGIN CONTROLLER
 export const login = (req, res) => {
   const { email, password } = req.body;
 
-  // 1️⃣ Validation
+  // Validation
   if (!email || !password) {
     return res.status(400).json({ message: "Email and password required" });
   }
 
-  // 2️⃣ First check students table
+  // First check students table
   const studentSql = "SELECT * FROM students WHERE email = ?";
 
   db.query(studentSql, [email], async (err, studentResult) => {
@@ -60,7 +60,7 @@ export const login = (req, res) => {
       return res.status(500).json({ message: "Database error" });
     }
 
-    // ✅ Student found
+    // Student found
     if (studentResult.length > 0) {
       const student = studentResult[0];
 
@@ -82,7 +82,7 @@ export const login = (req, res) => {
       });
     }
 
-    // 3️⃣ If not student → check boarding_owners table
+    // If not student -> check boarding_owners table
     const ownerSql = "SELECT * FROM boarding_owners WHERE email = ?";
 
     db.query(ownerSql, [email], async (err, ownerResult) => {
@@ -90,7 +90,7 @@ export const login = (req, res) => {
         return res.status(500).json({ message: "Database error" });
       }
 
-      // ❌ No user found
+      // No user found
       if (ownerResult.length === 0) {
         return res.status(401).json({ message: "Invalid email" });
       }

@@ -1,6 +1,6 @@
 import { db } from "../config/db.js";
 
-// ⭐ Add Review
+// Add Review
 export const addReview = (req, res) => {
   const boardingID = req.body.boardingID ?? req.body.boardingId ?? null;
   const rating = req.body.rating ?? null;
@@ -41,7 +41,7 @@ export const addReview = (req, res) => {
   );
 };
 
-// 👀 Get reviews for a boarding
+// Get reviews for a boarding
 export const getReviewsByBoarding = (req, res) => {
   const { id } = req.params;
 
