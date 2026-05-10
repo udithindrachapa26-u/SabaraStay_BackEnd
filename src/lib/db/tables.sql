@@ -30,6 +30,13 @@ CREATE TABLE boarding_places (
   FOREIGN KEY (boardingOwnerID) REFERENCES boarding_owners(boardingOwnerID)
 );
 
+CREATE TABLE boarding_photos (
+  photoID INT AUTO_INCREMENT PRIMARY KEY,
+  boardingID INT,
+  photoPath VARCHAR(255),
+  FOREIGN KEY (boardingID) REFERENCES boarding_places(boardingID) ON DELETE CASCADE
+);
+
 CREATE TABLE appointments (
   appointmentID INT AUTO_INCREMENT PRIMARY KEY,
   studentID INT,
