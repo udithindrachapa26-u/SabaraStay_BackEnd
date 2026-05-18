@@ -21,11 +21,24 @@ const createPasswordResetsTable = async () => {
 };
 
 export const register = async (req, res) => {
-  const { firstName, lastName, email, password, contactNo, role } = req.body;
+  const { firstName, lastName, email, password, confirmPassword, contactNo, role } = req.body;
+
+  const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
 
   // Validation
   if (!firstName || !lastName || !email || !password || !role) {
     return res.status(400).json({ message: "All fields required" });
+  }
+
+  if (password !== confirmPassword) {
+    return res.status(400).json({ message: "Passwords do not match" });
+  }
+
+  if (!passwordPattern.test(password)) {
+    return res.status(400).json({
+      message:
+        "Password must be at least 8 characters long and include uppercase, lowercase, number, and symbol.",
+    });
   }
 
   // Password hash
@@ -50,12 +63,16 @@ export const register = async (req, res) => {
   // Execute query
   db.query(sql, values, (err) => {
     if (err) {
+      console.error("Register DB error:", err);
+      if (err.code === "ER_DUP_ENTRY") {
+        return res.status(409).json({ message: "Email already registered" });
+      }
       return res.status(500).json({ message: "Database error" });
     }
 
     res.status(201).json({
       message: "Register successful",
-      role: role
+      role: role,
     });
   });
 };
