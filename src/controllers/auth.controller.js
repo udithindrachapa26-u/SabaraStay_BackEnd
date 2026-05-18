@@ -1,5 +1,24 @@
 import bcrypt from "bcrypt";
+import crypto from "crypto";
+import jwt from "jsonwebtoken";
 import { db } from "../config/db.js";
+
+const createPasswordResetsTable = async () => {
+  const sql = `
+    CREATE TABLE IF NOT EXISTS password_resets (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      email VARCHAR(255) NOT NULL,
+      role ENUM('student', 'owner') NOT NULL,
+      token VARCHAR(255) NOT NULL,
+      expires_at DATETIME NOT NULL,
+      used TINYINT(1) NOT NULL DEFAULT 0,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      INDEX (email),
+      INDEX (token)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `;
+  await db.promise().query(sql);
+};
 
 export const register = async (req, res) => {
   const { firstName, lastName, email, password, contactNo, role } = req.body;
@@ -41,7 +60,103 @@ export const register = async (req, res) => {
   });
 };
 
-import jwt from "jsonwebtoken";
+export const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ message: "Email required" });
+  }
+
+  try {
+    await createPasswordResetsTable();
+
+    const [studentRows] = await db.promise().query(
+      "SELECT email FROM students WHERE email = ?",
+      [email]
+    );
+
+    const [ownerRows] = await db.promise().query(
+      "SELECT email FROM boarding_owners WHERE email = ?",
+      [email]
+    );
+
+    if (studentRows.length === 0 && ownerRows.length === 0) {
+      return res.json({
+        message:
+          "If that email exists, password reset instructions have been sent.",
+      });
+    }
+
+    const role = studentRows.length > 0 ? "student" : "owner";
+    const token = crypto.randomBytes(32).toString("hex");
+
+    await db.promise().query(
+      "INSERT INTO password_resets (email, role, token, expires_at) VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 1 HOUR))",
+      [email, role, token]
+    );
+
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const resetLink = `${frontendUrl}/reset-password?token=${token}`;
+
+    console.log("Password reset requested for:", email);
+    console.log("Reset link:", resetLink);
+
+    return res.json({
+      message:
+        "If that email exists, password reset instructions have been sent.",
+      resetLink,
+    });
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    return res.status(500).json({ message: "Unable to process request" });
+  }
+};
+
+export const resetPassword = async (req, res) => {
+  const { token, password } = req.body;
+  if (!token || !password) {
+    return res
+      .status(400)
+      .json({ message: "Token and new password are required" });
+  }
+
+  try {
+    const [rows] = await db.promise().query(
+      "SELECT * FROM password_resets WHERE token = ? AND used = 0 AND expires_at > NOW()",
+      [token]
+    );
+
+    if (rows.length === 0) {
+      return res.status(400).json({ message: "Invalid or expired token" });
+    }
+
+    const resetRecord = rows[0];
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const tableName = resetRecord.role === "student" ? "students" : "boarding_owners";
+    const updateSql = `UPDATE ${tableName} SET password = ? WHERE email = ?`;
+
+    const [updateResult] = await db.promise().query(updateSql, [
+      hashedPassword,
+      resetRecord.email,
+    ]);
+
+    if (updateResult.affectedRows === 0) {
+      return res
+        .status(500)
+        .json({ message: "Unable to reset password for this user" });
+    }
+
+    await db.promise().query(
+      "UPDATE password_resets SET used = 1 WHERE id = ?",
+      [resetRecord.id]
+    );
+
+    return res.json({ message: "Password has been reset successfully" });
+  } catch (error) {
+    console.error("Reset password error:", error);
+    return res.status(500).json({ message: "Unable to reset password" });
+  }
+};
 
 // LOGIN CONTROLLER
 export const login = (req, res) => {
