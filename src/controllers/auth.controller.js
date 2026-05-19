@@ -201,16 +201,26 @@ export const login = (req, res) => {
         return res.status(401).json({ message: "Invalid password" });
       }
 
-      const token = jwt.sign(
-        { id: student.studentID || student.id, role: "student" },
-        process.env.JWT_SECRET,
-        { expiresIn: "1d" }
-      );
+      const userId = student.studentID || student.id || student.student_id || student.userID;
+      const token = jwt.sign({ id: userId, role: "student" }, process.env.JWT_SECRET, {
+        expiresIn: "1d",
+      });
+
+      // Build a safe user payload without password
+      const userPayload = {
+        id: userId,
+        firstName: student.firstName || student.firstname || student.first_name || "",
+        lastName: student.lastName || student.lastname || student.last_name || "",
+        email: student.email,
+        contactNo: student.contactNo || student.contact_no || "",
+        role: "student",
+      };
 
       return res.json({
         message: "Login successful",
         token,
         role: "student",
+        user: userPayload,
       });
     }
 
@@ -234,16 +244,25 @@ export const login = (req, res) => {
         return res.status(401).json({ message: "Invalid password" });
       }
 
-      const token = jwt.sign(
-        { id: owner.ownerID || owner.id, role: "owner" },
-        process.env.JWT_SECRET,
-        { expiresIn: "1d" }
-      );
+      const userId = owner.boardingOwnerID || owner.boardingownerid || owner.id || owner.ownerID;
+      const token = jwt.sign({ id: userId, role: "owner" }, process.env.JWT_SECRET, {
+        expiresIn: "1d",
+      });
+
+      const userPayload = {
+        id: userId,
+        firstName: owner.firstName || owner.firstname || owner.first_name || "",
+        lastName: owner.lastName || owner.lastname || owner.last_name || "",
+        email: owner.email,
+        contactNo: owner.contactNo || owner.contact_no || "",
+        role: "owner",
+      };
 
       res.json({
         message: "Login successful",
         token,
         role: "owner",
+        user: userPayload,
       });
     });
   });
