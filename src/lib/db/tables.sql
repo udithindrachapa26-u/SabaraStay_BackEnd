@@ -29,6 +29,11 @@ CREATE TABLE boarding_places (
   distance DECIMAL(5,2),
   FOREIGN KEY (boardingOwnerID) REFERENCES boarding_owners(boardingOwnerID)
 );
+ALTER TABLE boarding_places
+ADD COLUMN freeWifi TINYINT(1) DEFAULT 0,
+ADD COLUMN attachedBathroom TINYINT(1) DEFAULT 0,
+ADD COLUMN parking TINYINT(1) DEFAULT 0,
+ADD COLUMN kitchen TINYINT(1) DEFAULT 0;
 
 CREATE TABLE boarding_photos (
   photoID INT AUTO_INCREMENT PRIMARY KEY,

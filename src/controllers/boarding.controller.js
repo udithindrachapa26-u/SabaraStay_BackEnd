@@ -17,6 +17,11 @@ export const addBoarding = (req, res) => {
     distance,
   } = req.body;
 
+  const freeWifi = req.body.freeWifi ? 1 : 0;
+  const attachedBathroom = req.body.attachedBathroom ? 1 : 0;
+  const parking = req.body.parking ? 1 : 0;
+  const kitchen = req.body.kitchen ? 1 : 0;
+
   // Validate required fields
   if (!boardingName || !boardingType || !address || !price || !totalRooms || !availableSpace || !description || !distance) {
     return res.status(400).json({ message: "All fields are required" });
@@ -27,8 +32,8 @@ export const addBoarding = (req, res) => {
   const sql = `
     INSERT INTO boarding_places
     (boardingOwnerID, boardingName, boardingType, address, price,
-     totalRooms, availableSpace, description, distance)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+     totalRooms, availableSpace, description, distance, freeWifi, attachedBathroom, parking, kitchen)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   db.query(
@@ -43,6 +48,10 @@ export const addBoarding = (req, res) => {
       parseInt(availableSpace),
       description,
       parseFloat(distance),
+      freeWifi,
+      attachedBathroom,
+      parking,
+      kitchen,
     ],
     (err, result) => {
       if (err) {
@@ -127,13 +136,18 @@ export const updateBoarding = (req, res) => {
     distance,
   } = req.body;
 
+  const freeWifi = req.body.freeWifi ? 1 : 0;
+  const attachedBathroom = req.body.attachedBathroom ? 1 : 0;
+  const parking = req.body.parking ? 1 : 0;
+  const kitchen = req.body.kitchen ? 1 : 0;
+
   if (!boardingName || !boardingType || !address || !price || !totalRooms || !availableSpace || !description || !distance) {
     return res.status(400).json({ message: "All fields are required" });
   }
 
   const sql = `
     UPDATE boarding_places
-    SET boardingName = ?, boardingType = ?, address = ?, price = ?, totalRooms = ?, availableSpace = ?, description = ?, distance = ?
+    SET boardingName = ?, boardingType = ?, address = ?, price = ?, totalRooms = ?, availableSpace = ?, description = ?, distance = ?, freeWifi = ?, attachedBathroom = ?, parking = ?, kitchen = ?
     WHERE boardingID = ? AND boardingOwnerID = ?
   `;
 
@@ -148,6 +162,10 @@ export const updateBoarding = (req, res) => {
       parseInt(availableSpace, 10),
       description,
       parseFloat(distance),
+      freeWifi,
+      attachedBathroom,
+      parking,
+      kitchen,
       boardingID,
       req.user.id,
     ],
