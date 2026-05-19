@@ -2,6 +2,7 @@ import express from "express";
 import {
   addBoarding,
   getOwnerBoardings,
+  getBoardings,
   updateBoarding,
   deleteBoarding,
 } from "../controllers/boarding.controller.js";
@@ -10,6 +11,7 @@ import { upload } from "../middlewares/upload.js";
 
 const router = express.Router();
 
+router.get("/", getBoardings);
 router.post(
   "/",
   protect,

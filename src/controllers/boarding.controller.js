@@ -119,6 +119,88 @@ export const getOwnerBoardings = (req, res) => {
   });
 };
 
+export const getBoardings = (req, res) => {
+  const {
+    q,
+    boardingType,
+    minPrice,
+    maxPrice,
+    minRooms,
+    maxRooms,
+    maxDistance,
+    freeWifi,
+    attachedBathroom,
+    parking,
+    kitchen,
+  } = req.query;
+
+  let sql = "SELECT * FROM boarding_places WHERE 1=1";
+  const params = [];
+
+  if (q) {
+    const searchTerm = `%${q}%`;
+    sql += " AND (boardingName LIKE ? OR address LIKE ? OR description LIKE ?)";
+    params.push(searchTerm, searchTerm, searchTerm);
+  }
+
+  if (boardingType) {
+    sql += " AND boardingType = ?";
+    params.push(boardingType);
+  }
+
+  if (minPrice) {
+    sql += " AND price >= ?";
+    params.push(parseFloat(minPrice));
+  }
+
+  if (maxPrice) {
+    sql += " AND price <= ?";
+    params.push(parseFloat(maxPrice));
+  }
+
+  if (minRooms) {
+    sql += " AND totalRooms >= ?";
+    params.push(parseInt(minRooms, 10));
+  }
+
+  if (maxRooms) {
+    sql += " AND totalRooms <= ?";
+    params.push(parseInt(maxRooms, 10));
+  }
+
+  if (maxDistance) {
+    sql += " AND distance <= ?";
+    params.push(parseFloat(maxDistance));
+  }
+
+  if (freeWifi === "1" || freeWifi === "true") {
+    sql += " AND freeWifi = 1";
+  }
+
+  if (attachedBathroom === "1" || attachedBathroom === "true") {
+    sql += " AND attachedBathroom = 1";
+  }
+
+  if (parking === "1" || parking === "true") {
+    sql += " AND parking = 1";
+  }
+
+  if (kitchen === "1" || kitchen === "true") {
+    sql += " AND kitchen = 1";
+  }
+
+  sql += " ORDER BY distance ASC, price ASC";
+
+  db.query(sql, params, (err, results) => {
+    if (err) {
+      console.error("Database search error:", err);
+      return res.status(500).json({ message: "Database error" });
+    }
+
+    res.json(results);
+  });
+};
+
 export const updateBoarding = (req, res) => {
   if (req.user.role !== "owner") {
     return res.status(403).json({ message: "Access denied" });
