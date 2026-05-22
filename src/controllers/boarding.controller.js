@@ -287,3 +287,46 @@ export const deleteBoarding = (req, res) => {
     res.json({ message: "Boarding deleted successfully" });
   });
 };
+
+// 🔍 GET SINGLE BOARDING BY ID
+export const getBoardingById = (req, res) => {
+  const boardingID = parseInt(req.params.id, 10);
+
+  const sql = "SELECT * FROM boarding_places WHERE boardingID = ?";
+  db.query(sql, [boardingID], (err, results) => {
+    if (err) {
+      console.error("Database error:", err);
+      return res.status(500).json({ message: "Database error" });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({ message: "Boarding place not found" });
+    }
+
+    const boarding = results[0];
+
+    // Fetch photos
+    const photosSql = "SELECT photoPath FROM boarding_photos WHERE boardingID = ?";
+    db.query(photosSql, [boardingID], (photoErr, photoResults) => {
+      if (photoErr) {
+        console.error("Photo fetch database error:", photoErr);
+        return res.status(500).json({ message: "Database error" });
+      }
+
+      // Normalize photoPaths (replace backslashes with forward slashes for URL friendliness)
+      boarding.photos = photoResults.map((p) => p.photoPath ? p.photoPath.replace(/\\/g, "/") : "");
+
+      // Fetch owner info
+      const ownerSql = "SELECT firstName, lastName, email, contactNo FROM boarding_owners WHERE boardingOwnerID = ?";
+      db.query(ownerSql, [boarding.boardingOwnerID], (ownerErr, ownerResults) => {
+        if (ownerErr) {
+          console.error("Owner fetch database error:", ownerErr);
+          return res.status(500).json({ message: "Database error" });
+        }
+
+        boarding.owner = ownerResults[0] || null;
+        res.json(boarding);
+      });
+    });
+  });
+};

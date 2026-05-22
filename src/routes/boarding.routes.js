@@ -3,6 +3,7 @@ import {
   addBoarding,
   getOwnerBoardings,
   getBoardings,
+  getBoardingById,
   updateBoarding,
   deleteBoarding,
 } from "../controllers/boarding.controller.js";
@@ -19,6 +20,7 @@ router.post(
   addBoarding
 );
 router.get("/owner", protect, getOwnerBoardings);
+router.get("/:id", getBoardingById);
 router.put("/:id", protect, updateBoarding);
 router.delete("/:id", protect, deleteBoarding);
 
