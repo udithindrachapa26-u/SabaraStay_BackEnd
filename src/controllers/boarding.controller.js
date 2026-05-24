@@ -330,3 +330,35 @@ export const getBoardingById = (req, res) => {
     });
   });
 };
+
+// 🕒 GET 4 RECENTLY ADDED BOARDINGS
+export const getRecentBoardings = (req, res) => {
+  const sql = `
+    SELECT b.*, p.photoPath 
+    FROM boarding_places b 
+    LEFT JOIN (
+      SELECT boardingID, MIN(photoPath) as photoPath 
+      FROM boarding_photos 
+      GROUP BY boardingID
+    ) p ON b.boardingID = p.boardingID 
+    ORDER BY b.boardingID DESC 
+    LIMIT 4
+  `;
+
+  db.query(sql, (err, results) => {
+    if (err) {
+      console.error("Database error in getRecentBoardings:", err);
+      return res.status(500).json({ message: "Database error" });
+    }
+
+    // Normalize backslashes to forward slashes in photoPath
+    const normalizedResults = results.map(row => {
+      if (row.photoPath) {
+        row.photoPath = row.photoPath.replace(/\\/g, "/");
+      }
+      return row;
+    });
+
+    res.json(normalizedResults);
+  });
+};
