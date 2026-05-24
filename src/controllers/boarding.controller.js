@@ -134,62 +134,87 @@ export const getBoardings = (req, res) => {
     kitchen,
   } = req.query;
 
-  let sql = "SELECT * FROM boarding_places WHERE 1=1";
+  // Track whether any real filter is being applied
+  const hasFilters = !!(
+    q || boardingType || minPrice || maxPrice || minRooms || maxRooms ||
+    maxDistance ||
+    freeWifi === "1" || freeWifi === "true" ||
+    attachedBathroom === "1" || attachedBathroom === "true" ||
+    parking === "1" || parking === "true" ||
+    kitchen === "1" || kitchen === "true"
+  );
+
+  // LEFT JOIN with boarding_photos to pick one photo per boarding
+  let sql = `
+    SELECT b.*, p.photoPath
+    FROM boarding_places b
+    LEFT JOIN (
+      SELECT boardingID, MIN(photoPath) AS photoPath
+      FROM boarding_photos
+      GROUP BY boardingID
+    ) p ON b.boardingID = p.boardingID
+    WHERE 1=1
+  `;
   const params = [];
 
   if (q) {
     const searchTerm = `%${q}%`;
-    sql += " AND (boardingName LIKE ? OR address LIKE ? OR description LIKE ?)";
+    sql += " AND (b.boardingName LIKE ? OR b.address LIKE ? OR b.description LIKE ?)";
     params.push(searchTerm, searchTerm, searchTerm);
   }
 
   if (boardingType) {
-    sql += " AND boardingType = ?";
+    sql += " AND b.boardingType = ?";
     params.push(boardingType);
   }
 
   if (minPrice) {
-    sql += " AND price >= ?";
+    sql += " AND b.price >= ?";
     params.push(parseFloat(minPrice));
   }
 
   if (maxPrice) {
-    sql += " AND price <= ?";
+    sql += " AND b.price <= ?";
     params.push(parseFloat(maxPrice));
   }
 
   if (minRooms) {
-    sql += " AND totalRooms >= ?";
+    sql += " AND b.totalRooms >= ?";
     params.push(parseInt(minRooms, 10));
   }
 
   if (maxRooms) {
-    sql += " AND totalRooms <= ?";
+    sql += " AND b.totalRooms <= ?";
     params.push(parseInt(maxRooms, 10));
   }
 
   if (maxDistance) {
-    sql += " AND distance <= ?";
+    sql += " AND b.distance <= ?";
     params.push(parseFloat(maxDistance));
   }
 
   if (freeWifi === "1" || freeWifi === "true") {
-    sql += " AND freeWifi = 1";
+    sql += " AND b.freeWifi = 1";
   }
 
   if (attachedBathroom === "1" || attachedBathroom === "true") {
-    sql += " AND attachedBathroom = 1";
+    sql += " AND b.attachedBathroom = 1";
   }
 
   if (parking === "1" || parking === "true") {
-    sql += " AND parking = 1";
+    sql += " AND b.parking = 1";
   }
 
   if (kitchen === "1" || kitchen === "true") {
-    sql += " AND kitchen = 1";
+    sql += " AND b.kitchen = 1";
   }
 
-  sql += " ORDER BY distance ASC, price ASC";
+  // Sort by recently added when no filters, otherwise sort by proximity/price
+  if (hasFilters) {
+    sql += " ORDER BY b.distance ASC, b.price ASC";
+  } else {
+    sql += " ORDER BY b.boardingID DESC";
+  }
 
   db.query(sql, params, (err, results) => {
     if (err) {
@@ -197,7 +222,15 @@ export const getBoardings = (req, res) => {
       return res.status(500).json({ message: "Database error" });
     }
 
-    res.json(results);
+    // Normalize backslashes to forward slashes in photoPath
+    const normalized = results.map((row) => {
+      if (row.photoPath) {
+        row.photoPath = row.photoPath.replace(/\\/g, "/");
+      }
+      return row;
+    });
+
+    res.json(normalized);
   });
 };
 
