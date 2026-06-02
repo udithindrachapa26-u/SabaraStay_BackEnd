@@ -82,8 +82,8 @@ CREATE TABLE bookings (
   status ENUM('PENDING','CONFIRMED','CANCELLED') DEFAULT 'PENDING',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-  FOREIGN KEY (user_id) REFERENCES users(id),
-  FOREIGN KEY (boarding_id) REFERENCES boardings(id)
+  FOREIGN KEY (user_id) REFERENCES students(studentID),
+  FOREIGN KEY (boarding_id) REFERENCES boarding_places(boardingID)
 );
 
 /*CREATE TABLE bookings (

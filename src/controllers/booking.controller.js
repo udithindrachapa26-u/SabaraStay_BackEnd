@@ -4,9 +4,9 @@ export const getMyBookings = (req, res) => {
   const studentId = req.user.id;
 
   const sql = `
-    SELECT b.id, bd.name AS boarding_name, b.status
+    SELECT b.id, bd.boardingName AS boarding_name, bd.address AS boarding_address, b.status
     FROM bookings b
-    JOIN boardings bd ON b.boarding_id = bd.id
+    JOIN boarding_places bd ON b.boarding_id = bd.boardingID
     WHERE b.user_id = ?
   `;
 
