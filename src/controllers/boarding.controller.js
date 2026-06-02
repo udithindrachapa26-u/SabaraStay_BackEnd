@@ -17,14 +17,22 @@ export const addBoarding = (req, res) => {
     distance,
   } = req.body;
 
-  const freeWifi = req.body.freeWifi ? 1 : 0;
-  const attachedBathroom = req.body.attachedBathroom ? 1 : 0;
-  const parking = req.body.parking ? 1 : 0;
-  const kitchen = req.body.kitchen ? 1 : 0;
+  const freeWifi = req.body.freeWifi === "1" || req.body.freeWifi === true ? 1 : 0;
+  const attachedBathroom = req.body.attachedBathroom === "1" || req.body.attachedBathroom === true ? 1 : 0;
+  const parking = req.body.parking === "1" || req.body.parking === true ? 1 : 0;
+  const kitchen = req.body.kitchen === "1" || req.body.kitchen === true ? 1 : 0;
 
   // Validate required fields
   if (!boardingName || !boardingType || !address || !price || !totalRooms || !availableSpace || !description || !distance) {
     return res.status(400).json({ message: "All fields are required" });
+  }
+
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ message: "At least one photo is required" });
+  }
+
+  if (req.files.length > 4) {
+    return res.status(400).json({ message: "Maximum 4 photos allowed" });
   }
 
   const boardingOwnerID = req.user.id;
@@ -144,15 +152,9 @@ export const getBoardings = (req, res) => {
     kitchen === "1" || kitchen === "true"
   );
 
-  // LEFT JOIN with boarding_photos to pick one photo per boarding
   let sql = `
-    SELECT b.*, p.photoPath
+    SELECT b.*
     FROM boarding_places b
-    LEFT JOIN (
-      SELECT boardingID, MIN(photoPath) AS photoPath
-      FROM boarding_photos
-      GROUP BY boardingID
-    ) p ON b.boardingID = p.boardingID
     WHERE 1=1
   `;
   const params = [];
@@ -209,7 +211,6 @@ export const getBoardings = (req, res) => {
     sql += " AND b.kitchen = 1";
   }
 
-  // Sort by recently added when no filters, otherwise sort by proximity/price
   if (hasFilters) {
     sql += " ORDER BY b.distance ASC, b.price ASC";
   } else {
@@ -222,15 +223,45 @@ export const getBoardings = (req, res) => {
       return res.status(500).json({ message: "Database error" });
     }
 
-    // Normalize backslashes to forward slashes in photoPath
-    const normalized = results.map((row) => {
-      if (row.photoPath) {
-        row.photoPath = row.photoPath.replace(/\\/g, "/");
-      }
-      return row;
-    });
+    const boardingIds = results.map((r) => r.boardingID);
+    if (boardingIds.length === 0) {
+      return res.json([]);
+    }
 
-    res.json(normalized);
+    const photosSql = `
+      SELECT boardingID, photoPath
+      FROM boarding_photos
+      WHERE boardingID IN (?)
+      ORDER BY boardingID, photoID ASC
+    `;
+
+    db.query(photosSql, [boardingIds], (photoErr, photoResults) => {
+      if (photoErr) {
+        console.error("Photo fetch error:", photoErr);
+        const normalized = results.map((row) => ({
+          ...row,
+          photos: [],
+        }));
+        return res.json(normalized);
+      }
+
+      const photosMap = {};
+      photoResults.forEach((photo) => {
+        if (!photosMap[photo.boardingID]) {
+          photosMap[photo.boardingID] = [];
+        }
+        const normalizedPath = photo.photoPath.replace(/\\\\/g, "/");
+        photosMap[photo.boardingID].push(normalizedPath);
+      });
+
+      const normalized = results.map((row) => ({
+        ...row,
+        photoPath: (photosMap[row.boardingID] && photosMap[row.boardingID][0]) || null,
+        photos: photosMap[row.boardingID] || [],
+      }));
+
+      res.json(normalized);
+    });
   });
 };
 
@@ -251,10 +282,10 @@ export const updateBoarding = (req, res) => {
     distance,
   } = req.body;
 
-  const freeWifi = req.body.freeWifi ? 1 : 0;
-  const attachedBathroom = req.body.attachedBathroom ? 1 : 0;
-  const parking = req.body.parking ? 1 : 0;
-  const kitchen = req.body.kitchen ? 1 : 0;
+  const freeWifi = req.body.freeWifi === "1" || req.body.freeWifi === true ? 1 : 0;
+  const attachedBathroom = req.body.attachedBathroom === "1" || req.body.attachedBathroom === true ? 1 : 0;
+  const parking = req.body.parking === "1" || req.body.parking === true ? 1 : 0;
+  const kitchen = req.body.kitchen === "1" || req.body.kitchen === true ? 1 : 0;
 
   if (!boardingName || !boardingType || !address || !price || !totalRooms || !availableSpace || !description || !distance) {
     return res.status(400).json({ message: "All fields are required" });
@@ -367,14 +398,9 @@ export const getBoardingById = (req, res) => {
 // 🕒 GET 4 RECENTLY ADDED BOARDINGS
 export const getRecentBoardings = (req, res) => {
   const sql = `
-    SELECT b.*, p.photoPath 
-    FROM boarding_places b 
-    LEFT JOIN (
-      SELECT boardingID, MIN(photoPath) as photoPath 
-      FROM boarding_photos 
-      GROUP BY boardingID
-    ) p ON b.boardingID = p.boardingID 
-    ORDER BY b.boardingID DESC 
+    SELECT b.*
+    FROM boarding_places b
+    ORDER BY b.boardingID DESC
     LIMIT 4
   `;
 
@@ -384,14 +410,44 @@ export const getRecentBoardings = (req, res) => {
       return res.status(500).json({ message: "Database error" });
     }
 
-    // Normalize backslashes to forward slashes in photoPath
-    const normalizedResults = results.map(row => {
-      if (row.photoPath) {
-        row.photoPath = row.photoPath.replace(/\\/g, "/");
-      }
-      return row;
-    });
+    const boardingIds = results.map((r) => r.boardingID);
+    if (boardingIds.length === 0) {
+      return res.json([]);
+    }
 
-    res.json(normalizedResults);
+    const photosSql = `
+      SELECT boardingID, photoPath
+      FROM boarding_photos
+      WHERE boardingID IN (?)
+      ORDER BY boardingID, photoID ASC
+    `;
+
+    db.query(photosSql, [boardingIds], (photoErr, photoResults) => {
+      if (photoErr) {
+        console.error("Photo fetch error:", photoErr);
+        const normalized = results.map((row) => ({
+          ...row,
+          photos: [],
+        }));
+        return res.json(normalized);
+      }
+
+      const photosMap = {};
+      photoResults.forEach((photo) => {
+        if (!photosMap[photo.boardingID]) {
+          photosMap[photo.boardingID] = [];
+        }
+        const normalizedPath = photo.photoPath.replace(/\\\\/g, "/");
+        photosMap[photo.boardingID].push(normalizedPath);
+      });
+
+      const normalizedResults = results.map((row) => ({
+        ...row,
+        photoPath: (photosMap[row.boardingID] && photosMap[row.boardingID][0]) || null,
+        photos: photosMap[row.boardingID] || [],
+      }));
+
+      res.json(normalizedResults);
+    });
   });
 };
