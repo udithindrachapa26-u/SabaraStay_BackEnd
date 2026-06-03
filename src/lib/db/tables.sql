@@ -93,3 +93,17 @@ CREATE TABLE bookings (
   status VARCHAR(20),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );*/
+
+CREATE TABLE IF NOT EXISTS admins (
+  adminID INT AUTO_INCREMENT PRIMARY KEY,
+  firstName VARCHAR(100),
+  lastName VARCHAR(100),
+  email VARCHAR(150) UNIQUE,
+  password VARCHAR(255),
+  contactNo VARCHAR(20)
+);
+
+-- Seed Admin Account (Password: admin123)
+-- Hash generated via bcrypt
+INSERT INTO admins (firstName, lastName, email, password, contactNo)
+VALUES ('System', 'Admin', 'admin@sabarastay.com', '$2b$10$wE99Y5Kk5YfL2v9sS3sNreI0.N2C6tB9qU1pS/WzG6o324Oa3d0K.', '0711234567');
