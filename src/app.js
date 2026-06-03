@@ -5,12 +5,10 @@ import path from "path";
 
 import authRoutes from "./routes/auth.routes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
-
 import studentRoutes from "./routes/student.routes.js";
-
 import reviewRoutes from "./routes/review.routes.js";
-
 import boardingRoutes from "./routes/boarding.routes.js";
+import adminRoutes from "./routes/admin.routes.js";
 
 const app = express();
 
@@ -29,5 +27,6 @@ app.use("/api/bookings", bookingRoutes);
 app.use("/api/students", studentRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/boardings", boardingRoutes);
+app.use("/api/admin", adminRoutes);
 
 export default app;
