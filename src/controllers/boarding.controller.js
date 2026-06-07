@@ -17,10 +17,10 @@ export const addBoarding = (req, res) => {
     distance,
   } = req.body;
 
-  const freeWifi = req.body.freeWifi === "1" || req.body.freeWifi === true ? 1 : 0;
-  const attachedBathroom = req.body.attachedBathroom === "1" || req.body.attachedBathroom === true ? 1 : 0;
-  const parking = req.body.parking === "1" || req.body.parking === true ? 1 : 0;
-  const kitchen = req.body.kitchen === "1" || req.body.kitchen === true ? 1 : 0;
+  const freeWifi = req.body.freeWifi === "1" || req.body.freeWifi === true || req.body.freeWifi === 1 ? 1 : 0;
+  const attachedBathroom = req.body.attachedBathroom === "1" || req.body.attachedBathroom === true || req.body.attachedBathroom === 1 ? 1 : 0;
+  const parking = req.body.parking === "1" || req.body.parking === true || req.body.parking === 1 ? 1 : 0;
+  const kitchen = req.body.kitchen === "1" || req.body.kitchen === true || req.body.kitchen === 1 ? 1 : 0;
 
   // Validate required fields
   if (!boardingName || !boardingType || !address || !price || !totalRooms || !availableSpace || !description || !distance) {
@@ -282,10 +282,10 @@ export const updateBoarding = (req, res) => {
     distance,
   } = req.body;
 
-  const freeWifi = req.body.freeWifi === "1" || req.body.freeWifi === true ? 1 : 0;
-  const attachedBathroom = req.body.attachedBathroom === "1" || req.body.attachedBathroom === true ? 1 : 0;
-  const parking = req.body.parking === "1" || req.body.parking === true ? 1 : 0;
-  const kitchen = req.body.kitchen === "1" || req.body.kitchen === true ? 1 : 0;
+  const freeWifi = req.body.freeWifi === "1" || req.body.freeWifi === true || req.body.freeWifi === 1 ? 1 : 0;
+  const attachedBathroom = req.body.attachedBathroom === "1" || req.body.attachedBathroom === true || req.body.attachedBathroom === 1 ? 1 : 0;
+  const parking = req.body.parking === "1" || req.body.parking === true || req.body.parking === 1 ? 1 : 0;
+  const kitchen = req.body.kitchen === "1" || req.body.kitchen === true || req.body.kitchen === 1 ? 1 : 0;
 
   if (!boardingName || !boardingType || !address || !price || !totalRooms || !availableSpace || !description || !distance) {
     return res.status(400).json({ message: "All fields are required" });
