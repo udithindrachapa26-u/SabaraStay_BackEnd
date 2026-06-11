@@ -17,7 +17,7 @@ router.get("/", getBoardings);
 router.post(
   "/",
   protect,
-  upload.array("photos", 5),
+  upload.array("photos", 4),
   addBoarding
 );
 router.get("/owner", protect, getOwnerBoardings);
