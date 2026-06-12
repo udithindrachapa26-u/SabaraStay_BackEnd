@@ -1,3 +1,18 @@
+
+CREATE TABLE IF NOT EXISTS admins (
+  adminID INT AUTO_INCREMENT PRIMARY KEY,
+  firstName VARCHAR(100),
+  lastName VARCHAR(100),
+  email VARCHAR(150) UNIQUE,
+  password VARCHAR(255),
+  contactNo VARCHAR(20)
+);
+
+-- /Seed Admin Account (Password: Admin@12345)
+-- Hash generated via bcrypt
+INSERT INTO admins (firstName, lastName, email, password, contactNo)
+VALUES ('System', 'Admin', 'admin@sabarastay.com', '$2b$10$gxuDfTwDQM9vdZKK7xuuQeBk.ksG4J32nZ77eOPeJfIcwRonON76K', '0711234567');
+=======
 CREATE TABLE students (
   studentID INT AUTO_INCREMENT PRIMARY KEY,
   firstName VARCHAR(100),
@@ -86,10 +101,4 @@ CREATE TABLE bookings (
   FOREIGN KEY (boarding_id) REFERENCES boarding_places(boardingID)
 );
 
-/*CREATE TABLE bookings (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT,
-  boarding_id INT,
-  status VARCHAR(20),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);*/
+

@@ -232,9 +232,47 @@ export const login = (req, res) => {
         return res.status(500).json({ message: "Database error" });
       }
 
-      // No user found
+      // No owner found -> check admins table
       if (ownerResult.length === 0) {
-        return res.status(401).json({ message: "Invalid email" });
+        const adminSql = "SELECT * FROM admins WHERE email = ?";
+        db.query(adminSql, [email], async (err, adminResult) => {
+          if (err) {
+            return res.status(500).json({ message: "Database error" });
+          }
+
+          if (adminResult.length === 0) {
+            return res.status(401).json({ message: "Invalid email" });
+          }
+
+          const admin = adminResult[0];
+
+          const isMatch = await bcrypt.compare(password, admin.password);
+          if (!isMatch) {
+            return res.status(401).json({ message: "Invalid password" });
+          }
+
+          const userId = admin.adminID || admin.id;
+          const token = jwt.sign({ id: userId, role: "admin" }, process.env.JWT_SECRET, {
+            expiresIn: "1d",
+          });
+
+          const userPayload = {
+            id: userId,
+            firstName: admin.firstName || admin.firstname || admin.first_name || "",
+            lastName: admin.lastName || admin.lastname || admin.last_name || "",
+            email: admin.email,
+            contactNo: admin.contactNo || admin.contact_no || "",
+            role: "admin",
+          };
+
+          return res.json({
+            message: "Login successful",
+            token,
+            role: "admin",
+            user: userPayload,
+          });
+        });
+        return;
       }
 
       const owner = ownerResult[0];
