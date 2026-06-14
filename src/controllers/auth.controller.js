@@ -305,3 +305,113 @@ export const login = (req, res) => {
     });
   });
 };
+
+// GOOGLE LOGIN CONTROLLER
+export const googleLogin = async (req, res) => {
+  const { token } = req.body;
+
+  if (!token) {
+    return res.status(400).json({ message: "Google ID token required" });
+  }
+
+  try {
+    // 1. Verify token by calling Google API
+    const googleRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${token}`);
+    if (!googleRes.ok) {
+      return res.status(401).json({ message: "Invalid Google token" });
+    }
+
+    const payload = await googleRes.json();
+    const { email, email_verified, given_name, family_name } = payload;
+
+    if (!email || !email_verified) {
+      return res.status(400).json({ message: "Invalid email from Google" });
+    }
+
+    // 2. Check students table
+    const [students] = await db.promise().query(
+      "SELECT * FROM students WHERE email = ?",
+      [email]
+    );
+
+    if (students.length > 0) {
+      const student = students[0];
+      const userId = student.studentID || student.id || student.userID;
+      const jwtToken = jwt.sign({ id: userId, role: "student" }, process.env.JWT_SECRET, {
+        expiresIn: "1d",
+      });
+
+      return res.json({
+        message: "Login successful",
+        token: jwtToken,
+        role: "student",
+        user: {
+          id: userId,
+          firstName: student.firstName || given_name || "",
+          lastName: student.lastName || family_name || "",
+          email: student.email,
+          contactNo: student.contactNo || "",
+          role: "student",
+        },
+      });
+    }
+
+    // 3. Check boarding_owners table
+    const [owners] = await db.promise().query(
+      "SELECT * FROM boarding_owners WHERE email = ?",
+      [email]
+    );
+
+    if (owners.length > 0) {
+      const owner = owners[0];
+      const userId = owner.boardingOwnerID || owner.id || owner.ownerID;
+      const jwtToken = jwt.sign({ id: userId, role: "owner" }, process.env.JWT_SECRET, {
+        expiresIn: "1d",
+      });
+
+      return res.json({
+        message: "Login successful",
+        token: jwtToken,
+        role: "owner",
+        user: {
+          id: userId,
+          firstName: owner.firstName || given_name || "",
+          lastName: owner.lastName || family_name || "",
+          email: owner.email,
+          contactNo: owner.contactNo || "",
+          role: "owner",
+        },
+      });
+    }
+
+    // 4. Create a new student account automatically if not registered
+    const defaultPassword = ""; 
+    const [insertResult] = await db.promise().query(
+      "INSERT INTO students (firstName, lastName, email, password, contactNo) VALUES (?, ?, ?, ?, ?)",
+      [given_name || "Google", family_name || "User", email, defaultPassword, ""]
+    );
+
+    const newUserId = insertResult.insertId;
+    const jwtToken = jwt.sign({ id: newUserId, role: "student" }, process.env.JWT_SECRET, {
+      expiresIn: "1d",
+    });
+
+    return res.status(201).json({
+      message: "Registration and login successful via Google",
+      token: jwtToken,
+      role: "student",
+      user: {
+        id: newUserId,
+        firstName: given_name || "Google",
+        lastName: family_name || "User",
+        email: email,
+        contactNo: "",
+        role: "student",
+      },
+    });
+
+  } catch (error) {
+    console.error("Google authentication error:", error);
+    return res.status(500).json({ message: "Authentication failed" });
+  }
+};
