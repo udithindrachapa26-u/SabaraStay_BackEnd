@@ -13,11 +13,19 @@ import { upload } from "../middlewares/upload.js";
 
 const router = express.Router();
 
+const maybeUploadPhotos = (req, res, next) => {
+  const contentType = req.headers["content-type"] || "";
+  if (contentType.includes("multipart/form-data")) {
+    return upload.array("photos", 4)(req, res, next);
+  }
+  return next();
+};
+
 router.get("/", getBoardings);
 router.post(
   "/",
   protect,
-  upload.array("photos", 4),
+  maybeUploadPhotos,
   addBoarding
 );
 router.get("/owner", protect, getOwnerBoardings);

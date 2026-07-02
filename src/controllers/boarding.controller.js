@@ -1,5 +1,21 @@
 import { db } from "../config/db.js";
 
+const normalizeBoolean = (value) => {
+  if (typeof value === "boolean") return value ? 1 : 0;
+  if (typeof value === "number") return value ? 1 : 0;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    return normalized === "1" || normalized === "true" || normalized === "yes" ? 1 : 0;
+  }
+  return 0;
+};
+
+const getPublicPhotoPath = (file) => {
+  const resolvedPath = (file.path || `${file.destination}/${file.filename}`).replace(/\\/g, "/");
+  const match = resolvedPath.match(/(?:^|\/)(uploads\/.+)$/);
+  return match ? match[1] : `uploads/boarding/${file.filename}`;
+};
+
 // ➕ ADD BOARDING
 export const addBoarding = (req, res) => {
   if (req.user.role !== "owner") {
@@ -17,21 +33,28 @@ export const addBoarding = (req, res) => {
     distance,
   } = req.body;
 
-  const freeWifi = req.body.freeWifi === "1" || req.body.freeWifi === true || req.body.freeWifi === 1 ? 1 : 0;
-  const attachedBathroom = req.body.attachedBathroom === "1" || req.body.attachedBathroom === true || req.body.attachedBathroom === 1 ? 1 : 0;
-  const parking = req.body.parking === "1" || req.body.parking === true || req.body.parking === 1 ? 1 : 0;
-  const kitchen = req.body.kitchen === "1" || req.body.kitchen === true || req.body.kitchen === 1 ? 1 : 0;
+  const freeWifi = normalizeBoolean(req.body.freeWifi);
+  const attachedBathroom = normalizeBoolean(req.body.attachedBathroom);
+  const parking = normalizeBoolean(req.body.parking);
+  const kitchen = normalizeBoolean(req.body.kitchen);
+  const shortTerm = normalizeBoolean(req.body.shortTerm);
+  const longTerm = normalizeBoolean(req.body.longTerm);
+  const forLecturers = normalizeBoolean(req.body.forLecturers);
 
-  // Validate required fields
-  if (!boardingName || !boardingType || !address || !price || !totalRooms || !availableSpace || !description || !distance) {
-    return res.status(400).json({ message: "All fields are required" });
+  if (!boardingName || !boardingType || !address || !description) {
+    return res.status(400).json({ message: "Boarding name, type, address, and description are required" });
   }
 
-  if (!req.files || req.files.length === 0) {
-    return res.status(400).json({ message: "At least one photo is required" });
+  const priceValue = Number(price);
+  const totalRoomsValue = Number(totalRooms);
+  const availableSpaceValue = Number(availableSpace);
+  const distanceValue = Number(distance);
+
+  if (!Number.isFinite(priceValue) || !Number.isFinite(totalRoomsValue) || !Number.isFinite(availableSpaceValue) || !Number.isFinite(distanceValue)) {
+    return res.status(400).json({ message: "Price, total rooms, available space, and distance must be valid numbers" });
   }
 
-  if (req.files.length > 4) {
+  if (req.files && req.files.length > 4) {
     return res.status(400).json({ message: "Maximum 4 photos allowed" });
   }
 
@@ -40,8 +63,9 @@ export const addBoarding = (req, res) => {
   const sql = `
     INSERT INTO boarding_places
     (boardingOwnerID, boardingName, boardingType, address, price,
-     totalRooms, availableSpace, description, distance, freeWifi, attachedBathroom, parking, kitchen)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     totalRooms, availableSpace, description, distance, freeWifi, attachedBathroom, parking, kitchen,
+     shortTerm, longTerm, forLecturers)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   db.query(
@@ -51,15 +75,18 @@ export const addBoarding = (req, res) => {
       boardingName,
       boardingType,
       address,
-      parseFloat(price),
-      parseInt(totalRooms),
-      parseInt(availableSpace),
+      priceValue,
+      totalRoomsValue,
+      availableSpaceValue,
       description,
-      parseFloat(distance),
+      distanceValue,
       freeWifi,
       attachedBathroom,
       parking,
       kitchen,
+      shortTerm,
+      longTerm,
+      forLecturers,
     ],
     (err, result) => {
       if (err) {
@@ -69,11 +96,10 @@ export const addBoarding = (req, res) => {
 
       const boardingID = result.insertId;
 
-      // 📸 SAVE PHOTOS
       if (req.files && req.files.length > 0) {
         const values = req.files.map((file) => [
           boardingID,
-          file.path,
+          getPublicPhotoPath(file),
         ]);
 
         db.query(
@@ -82,7 +108,6 @@ export const addBoarding = (req, res) => {
           (photoErr) => {
             if (photoErr) {
               console.error("Photo insertion error:", photoErr);
-              // Don't fail if photos fail - boarding was created
             }
           }
         );
@@ -140,6 +165,9 @@ export const getBoardings = (req, res) => {
     attachedBathroom,
     parking,
     kitchen,
+    shortTerm,
+    longTerm,
+    forLecturers,
   } = req.query;
 
   // Track whether any real filter is being applied
@@ -149,7 +177,10 @@ export const getBoardings = (req, res) => {
     freeWifi === "1" || freeWifi === "true" ||
     attachedBathroom === "1" || attachedBathroom === "true" ||
     parking === "1" || parking === "true" ||
-    kitchen === "1" || kitchen === "true"
+    kitchen === "1" || kitchen === "true" ||
+    shortTerm === "1" || shortTerm === "true" ||
+    longTerm === "1" || longTerm === "true" ||
+    forLecturers === "1" || forLecturers === "true"
   );
 
   let sql = `
@@ -209,6 +240,18 @@ export const getBoardings = (req, res) => {
 
   if (kitchen === "1" || kitchen === "true") {
     sql += " AND b.kitchen = 1";
+  }
+
+  if (shortTerm === "1" || shortTerm === "true") {
+    sql += " AND b.shortTerm = 1";
+  }
+
+  if (longTerm === "1" || longTerm === "true") {
+    sql += " AND b.longTerm = 1";
+  }
+
+  if (forLecturers === "1" || forLecturers === "true") {
+    sql += " AND b.forLecturers = 1";
   }
 
   if (hasFilters) {
@@ -286,6 +329,9 @@ export const updateBoarding = (req, res) => {
   const attachedBathroom = req.body.attachedBathroom === "1" || req.body.attachedBathroom === true || req.body.attachedBathroom === 1 ? 1 : 0;
   const parking = req.body.parking === "1" || req.body.parking === true || req.body.parking === 1 ? 1 : 0;
   const kitchen = req.body.kitchen === "1" || req.body.kitchen === true || req.body.kitchen === 1 ? 1 : 0;
+  const shortTerm = req.body.shortTerm === "1" || req.body.shortTerm === true || req.body.shortTerm === 1 ? 1 : 0;
+  const longTerm = req.body.longTerm === "1" || req.body.longTerm === true || req.body.longTerm === 1 ? 1 : 0;
+  const forLecturers = req.body.forLecturers === "1" || req.body.forLecturers === true || req.body.forLecturers === 1 ? 1 : 0;
 
   if (!boardingName || !boardingType || !address || !price || !totalRooms || !availableSpace || !description || !distance) {
     return res.status(400).json({ message: "All fields are required" });
@@ -293,7 +339,7 @@ export const updateBoarding = (req, res) => {
 
   const sql = `
     UPDATE boarding_places
-    SET boardingName = ?, boardingType = ?, address = ?, price = ?, totalRooms = ?, availableSpace = ?, description = ?, distance = ?, freeWifi = ?, attachedBathroom = ?, parking = ?, kitchen = ?
+    SET boardingName = ?, boardingType = ?, address = ?, price = ?, totalRooms = ?, availableSpace = ?, description = ?, distance = ?, freeWifi = ?, attachedBathroom = ?, parking = ?, kitchen = ?, shortTerm = ?, longTerm = ?, forLecturers = ?
     WHERE boardingID = ? AND boardingOwnerID = ?
   `;
 
@@ -312,6 +358,9 @@ export const updateBoarding = (req, res) => {
       attachedBathroom,
       parking,
       kitchen,
+      shortTerm,
+      longTerm,
+      forLecturers,
       boardingID,
       req.user.id,
     ],
