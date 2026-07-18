@@ -25,16 +25,20 @@ export const deleteStudent = async (req, res) => {
     await connection.beginTransaction();
 
     // 1. Delete student's bookings
-    
+    await connection.query("DELETE FROM bookings WHERE user_id = ?", [studentId]);
+
     // 2. Delete student's appointments
-   
+    await connection.query("DELETE FROM appointments WHERE studentID = ?", [studentId]);
+
     // 3. Delete student's reviews
-    
+    await connection.query("DELETE FROM reviews WHERE studentID = ?", [studentId]);
+
     // 4. Delete student's notifications
     //await connection.query("DELETE FROM notifications WHERE studentID = ?", [studentId]);
 
     // 5. Delete student record
-    
+    const [result] = await connection.query("DELETE FROM students WHERE studentID = ?", [studentId]);
+
     if (result.affectedRows === 0) {
       await connection.rollback();
       return res.status(404).json({ message: "Student not found" });
@@ -52,7 +56,17 @@ export const deleteStudent = async (req, res) => {
 };
 
 // GET ALL OWNERS
-
+export const getAllOwners = async (req, res) => {
+  try {
+    const [rows] = await db.promise().query(
+      `SELECT boardingOwnerID AS id, firstName, lastName, email, contactNo FROM boarding_owners ORDER BY boardingOwnerID DESC`
+    );
+    res.json(rows);
+  } catch (error) {
+    console.error("Error fetching owners:", error);
+    res.status(500).json({ message: "Database error" });
+  }
+};
 
 // DELETE OWNER (AND REFERENCES)
 export const deleteOwner = async (req, res) => {
@@ -78,13 +92,17 @@ export const deleteOwner = async (req, res) => {
       await connection.query("DELETE FROM bookings WHERE boardingID IN (?)", [boardingIds]);
 
       // Delete appointments for these boardings
-      
+      await connection.query("DELETE FROM appointments WHERE boardingID IN (?)", [boardingIds]);
+
       // Delete reviews for these boardings
-      
+      await connection.query("DELETE FROM reviews WHERE boardingID IN (?)", [boardingIds]);
+
       // Delete boarding photos
-      
+      await connection.query("DELETE FROM boarding_photos WHERE boardingID IN (?)", [boardingIds]);
+
       // Delete boardings
-      }
+      await connection.query("DELETE FROM boarding_places WHERE boardingOwnerID = ?", [ownerId]);
+    }
 
     // Finally delete owner
     const [result] = await connection.query("DELETE FROM boarding_owners WHERE boardingOwnerID = ?", [ownerId]);
