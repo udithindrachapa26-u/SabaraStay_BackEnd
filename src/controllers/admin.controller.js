@@ -89,7 +89,7 @@ export const deleteOwner = async (req, res) => {
 
     if (boardingIds.length > 0) {
       // Delete bookings for these boardings
-      await connection.query("DELETE FROM bookings WHERE boardingID IN (?)", [boardingIds]);
+      await connection.query("DELETE FROM bookings WHERE boarding_id IN (?)", [boardingIds]);
 
       // Delete appointments for these boardings
       await connection.query("DELETE FROM appointments WHERE boardingID IN (?)", [boardingIds]);
@@ -151,7 +151,7 @@ export const deleteBoarding = async (req, res) => {
     await connection.beginTransaction();
 
     // 1. Delete bookings for this boarding
-    await connection.query("DELETE FROM bookings WHERE boardingID = ?", [boardingId]);
+    await connection.query("DELETE FROM bookings WHERE boarding_id = ?", [boardingId]);
 
     // 2. Delete appointments for this boarding
     await connection.query("DELETE FROM appointments WHERE boardingID = ?", [boardingId]);
