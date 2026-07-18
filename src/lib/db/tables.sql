@@ -73,23 +73,5 @@ CREATE TABLE appointments (
   FOREIGN KEY (boardingID) REFERENCES boarding_places(boardingID)
 );
 
-CREATE TABLE reviews (
-  reviewID INT AUTO_INCREMENT PRIMARY KEY,
-  studentID INT,
-  boardingID INT,
-  rating INT,
-  comment TEXT,
-  reviewDate DATE,
-  FOREIGN KEY (studentID) REFERENCES students(studentID),
-  FOREIGN KEY (boardingID) REFERENCES boarding_places(boardingID)
-);
 
-CREATE TABLE notifications (
-  notificationID INT AUTO_INCREMENT PRIMARY KEY,
-  studentID INT,
-  message VARCHAR(255),
-  createdDate DATE,
-  status VARCHAR(20),
-  FOREIGN KEY (studentID) REFERENCES students(studentID)
-);
 
