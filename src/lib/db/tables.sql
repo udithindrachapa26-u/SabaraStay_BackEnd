@@ -93,17 +93,3 @@ CREATE TABLE notifications (
   FOREIGN KEY (studentID) REFERENCES students(studentID)
 );
 
-CREATE TABLE bookings (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT NOT NULL,
-  boarding_id INT NOT NULL,
-  start_date DATE NOT NULL,
-  months INT NOT NULL,
-  status ENUM('PENDING','CONFIRMED','CANCELLED') DEFAULT 'PENDING',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-  FOREIGN KEY (user_id) REFERENCES students(studentID),
-  FOREIGN KEY (boarding_id) REFERENCES boarding_places(boardingID)
-);
-
-
