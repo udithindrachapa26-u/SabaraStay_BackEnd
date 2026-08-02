@@ -20,38 +20,23 @@ export const deleteStudent = async (req, res) => {
     return res.status(400).json({ message: "Invalid student ID" });
   }
 
-  const connection = await db.promise().getConnection();
   try {
-    await connection.beginTransaction();
+    // Delete dependent records first, then the student
+    // Note: bookings table uses 'user_id' column for student reference
+    await db.promise().query("DELETE FROM bookings WHERE user_id = ?", [studentId]);
+    await db.promise().query("DELETE FROM appointments WHERE studentID = ?", [studentId]);
+    await db.promise().query("DELETE FROM reviews WHERE studentID = ?", [studentId]);
 
-    // 1. Delete student's bookings
-    await connection.query("DELETE FROM bookings WHERE studentID = ?", [studentId]);
-
-    // 2. Delete student's appointments
-    await connection.query("DELETE FROM appointments WHERE studentID = ?", [studentId]);
-
-    // 3. Delete student's reviews
-    await connection.query("DELETE FROM reviews WHERE studentID = ?", [studentId]);
-
-    // 4. Delete student's notifications
-    //await connection.query("DELETE FROM notifications WHERE studentID = ?", [studentId]);
-
-    // 5. Delete student record
-    const [result] = await connection.query("DELETE FROM students WHERE studentID = ?", [studentId]);
+    const [result] = await db.promise().query("DELETE FROM students WHERE studentID = ?", [studentId]);
 
     if (result.affectedRows === 0) {
-      await connection.rollback();
       return res.status(404).json({ message: "Student not found" });
     }
 
-    await connection.commit();
     res.json({ message: "Student and related data deleted successfully" });
   } catch (error) {
-    await connection.rollback();
     console.error("Error deleting student:", error);
-    res.status(500).json({ message: "Database error" });
-  } finally {
-    connection.release();
+    res.status(500).json({ message: "Database error: " + error.message });
   }
 };
 
@@ -75,51 +60,36 @@ export const deleteOwner = async (req, res) => {
     return res.status(400).json({ message: "Invalid owner ID" });
   }
 
-  const connection = await db.promise().getConnection();
   try {
-    await connection.beginTransaction();
-
-    // Fetch all boardings belonging to this owner
-    const [boardings] = await connection.query(
+    // Fetch all boarding IDs owned by this owner
+    const [boardings] = await db.promise().query(
       "SELECT boardingID FROM boarding_places WHERE boardingOwnerID = ?",
       [ownerId]
     );
-
     const boardingIds = boardings.map((b) => b.boardingID);
 
     if (boardingIds.length > 0) {
-      // Delete bookings for these boardings
-      await connection.query("DELETE FROM bookings WHERE boardingID IN (?)", [boardingIds]);
-
-      // Delete appointments for these boardings
-      await connection.query("DELETE FROM appointments WHERE boardingID IN (?)", [boardingIds]);
-
-      // Delete reviews for these boardings
-      await connection.query("DELETE FROM reviews WHERE boardingID IN (?)", [boardingIds]);
-
-      // Delete boarding photos
-      await connection.query("DELETE FROM boarding_photos WHERE boardingID IN (?)", [boardingIds]);
-
-      // Delete boardings
-      await connection.query("DELETE FROM boarding_places WHERE boardingOwnerID = ?", [ownerId]);
+      // Note: bookings table uses 'boarding_id' column, not 'boardingID'
+      await db.promise().query("DELETE FROM bookings WHERE boarding_id IN (?)", [boardingIds]);
+      await db.promise().query("DELETE FROM appointments WHERE boardingID IN (?)", [boardingIds]);
+      await db.promise().query("DELETE FROM reviews WHERE boardingID IN (?)", [boardingIds]);
+      await db.promise().query("DELETE FROM boarding_photos WHERE boardingID IN (?)", [boardingIds]);
+      await db.promise().query("DELETE FROM boarding_places WHERE boardingOwnerID = ?", [ownerId]);
     }
 
-    // Finally delete owner
-    const [result] = await connection.query("DELETE FROM boarding_owners WHERE boardingOwnerID = ?", [ownerId]);
+    const [result] = await db.promise().query(
+      "DELETE FROM boarding_owners WHERE boardingOwnerID = ?",
+      [ownerId]
+    );
 
     if (result.affectedRows === 0) {
-      await connection.rollback();
       return res.status(404).json({ message: "Boarding owner not found" });
     }
 
-    await connection.commit();
     res.json({ message: "Boarding owner and related listings deleted successfully" });
   } catch (error) {
-    await connection.rollback();
     console.error("Error deleting owner:", error);
-    res.status(500).json({ message: "Database error" });
-  } finally {
-    connection.release();
+    res.status(500).json({ message: "Database error: " + error.message });
   }
 };
 
@@ -146,37 +116,25 @@ export const deleteBoarding = async (req, res) => {
     return res.status(400).json({ message: "Invalid boarding ID" });
   }
 
-  const connection = await db.promise().getConnection();
   try {
-    await connection.beginTransaction();
+    // Note: bookings table uses 'boarding_id' column, not 'boardingID'
+    await db.promise().query("DELETE FROM bookings WHERE boarding_id = ?", [boardingId]);
+    await db.promise().query("DELETE FROM appointments WHERE boardingID = ?", [boardingId]);
+    await db.promise().query("DELETE FROM reviews WHERE boardingID = ?", [boardingId]);
+    await db.promise().query("DELETE FROM boarding_photos WHERE boardingID = ?", [boardingId]);
 
-    // 1. Delete bookings for this boarding
-    await connection.query("DELETE FROM bookings WHERE boardingID = ?", [boardingId]);
-
-    // 2. Delete appointments for this boarding
-    await connection.query("DELETE FROM appointments WHERE boardingID = ?", [boardingId]);
-
-    // 3. Delete reviews for this boarding
-    await connection.query("DELETE FROM reviews WHERE boardingID = ?", [boardingId]);
-
-    // 4. Delete boarding photos
-    await connection.query("DELETE FROM boarding_photos WHERE boardingID = ?", [boardingId]);
-
-    // 5. Delete boarding listing
-    const [result] = await connection.query("DELETE FROM boarding_places WHERE boardingID = ?", [boardingId]);
+    const [result] = await db.promise().query(
+      "DELETE FROM boarding_places WHERE boardingID = ?",
+      [boardingId]
+    );
 
     if (result.affectedRows === 0) {
-      await connection.rollback();
       return res.status(404).json({ message: "Boarding listing not found" });
     }
 
-    await connection.commit();
     res.json({ message: "Boarding listing moderated and deleted successfully" });
   } catch (error) {
-    await connection.rollback();
     console.error("Error deleting boarding listing:", error);
-    res.status(500).json({ message: "Database error" });
-  } finally {
-    connection.release();
+    res.status(500).json({ message: "Database error: " + error.message });
   }
 };
